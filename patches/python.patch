@@ -1,0 +1,12 @@
+diff --git a/Python-2.7.5/Modules/_ctypes/libffi/fficonfig.py.in b/Python-2.7.5/Modules/_ctypes/libffi/fficonfig.py.in
+index c61d7c5..6176fa6 100644
+--- a/Python-2.7.5/Modules/_ctypes/libffi/fficonfig.py.in
++++ b/Python-2.7.5/Modules/_ctypes/libffi/fficonfig.py.in
+@@ -4,6 +4,7 @@ src/closures.c
+ """.split()
+ 
+ ffi_platforms = {
++    'AARCH64': ['src/aarch64/ffi.c', 'src/aarch64/sysv.S'],
+     'MIPS_IRIX': ['src/mips/ffi.c', 'src/mips/o32.S', 'src/mips/n32.S'],
+     'MIPS_LINUX': ['src/mips/ffi.c', 'src/mips/o32.S'],
+     'X86': ['src/x86/ffi.c', 'src/x86/sysv.S'],

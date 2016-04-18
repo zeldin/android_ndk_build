@@ -1,0 +1,136 @@
+diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/core/init.mk android-ndk-r11c/build/core/init.mk
+--- android-ndk-r11c.orig/build/core/init.mk	2016-03-30 09:23:10.000000000 +0200
++++ android-ndk-r11c/build/core/init.mk	2016-04-13 14:45:03.729945105 +0200
+@@ -251,6 +251,9 @@
+         ifneq (,$(findstring Power,$(UNAME)))
+             HOST_ARCH := ppc
+         endif
++        ifneq (,$(findstring aarch64,$(UNAME)))
++            HOST_ARCH := arm64
++        endif
+         ifeq ($(HOST_ARCH),)
+             $(call __ndk_info,Unsupported host architecture: $(UNAME))
+             $(call __ndk_error,Aborting)
+diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/lib/build_support.py android-ndk-r11c/build/lib/build_support.py
+--- android-ndk-r11c.orig/build/lib/build_support.py	2016-03-30 09:23:10.000000000 +0200
++++ android-ndk-r11c/build/lib/build_support.py	2016-04-16 14:39:07.549978529 +0200
+@@ -21,6 +21,7 @@
+ import sys
+ import tempfile
+ import zipfile
++import platform
+ 
+ 
+ # TODO: Make the x86 toolchain names just be the triple.
+@@ -172,9 +173,17 @@
+         raise RuntimeError('Unsupported host: {}'.format(sys.platform))
+ 
+ 
++def get_default_tag_suffix():
++    if platform.machine() == 'aarch64':
++        return '-arm64'
++    elif platform.machine() in ['ppc', 'ppc64']:
++        return '-ppc'
++    else:
++        return '-x86_64'
++ 
+ def host_to_tag(host):
+     if host in ['darwin', 'linux']:
+-        return host + '-x86_64'
++        return host + get_default_tag_suffix()
+     elif host == 'windows':
+         return 'windows'
+     elif host == 'windows64':
+diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/ndk-build android-ndk-r11c/build/ndk-build
+--- android-ndk-r11c.orig/build/ndk-build	2016-03-30 09:23:10.000000000 +0200
++++ android-ndk-r11c/build/ndk-build	2016-04-16 14:51:51.499978237 +0200
+@@ -127,8 +127,10 @@
+ 
+ HOST_ARCH=$(uname -m)
+ case $HOST_ARCH in
+-    i?86) HOST_ARCH=x86;;
++d    i?86) HOST_ARCH=x86;;
+     x86_64|amd64) HOST_ARCH=x86_64;;
++    ppc|ppc64) HOST_ARCH=ppc;;
++    aarch64) HOST_ARCH=arm64;;
+     *) echo "ERROR: Unknown host CPU architecture: $HOST_ARCH"
+        exit 1
+ esac
+diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/tools/common-build-host-funcs.sh android-ndk-r11c/build/tools/common-build-host-funcs.sh
+--- android-ndk-r11c.orig/build/tools/common-build-host-funcs.sh	2016-03-30 09:23:10.000000000 +0200
++++ android-ndk-r11c/build/tools/common-build-host-funcs.sh	2016-04-16 15:53:20.849976830 +0200
+@@ -95,6 +95,7 @@
+         *-mips64) RET=mips64;;
+         windows|*-x86) RET=x86;;
+         *-x86_64) RET=x86_64;;
++        *-ppc) RET=ppc;;
+         *) echo "ERROR: Unknown tag $1" >&2; echo "INVALID"; exit 1;;
+     esac
+     echo $RET
+@@ -107,8 +108,8 @@
+ {
+     local RET
+     case $1 in
+-        windows|*-x86|*-arm|*-mips) RET=32;;
+-        *-x86_64|*-arm64|*-mips64) RET=64;;
++        windows|*-x86|*-ppc|*-arm|*-mips) RET=32;;
++        *-x86_64|*-ppc64|*-arm64|*-mips64) RET=64;;
+         *) echo "ERROR: Unknown tag $1" >&2; echo "INVALID"; exit 1;;
+     esac
+     echo $RET
+@@ -123,6 +124,8 @@
+     case $1 in
+         linux-x86) RET=i686-linux-gnu;;
+         linux-x86_64) RET=x86_64-linux-gnu;;
++	linux-arm64) RET=aarch64-unknown-linux-gnu;;
++	linux-ppc) RET=powerpc-linux-gnu;;
+         darwin-x86) RET=i686-apple-darwin;;
+         darwin-x86_64) RET=x86_64-apple-darwin;;
+         windows|windows-x86) RET=i586-pc-mingw32msvc;;
+diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/tools/ndk-common.sh android-ndk-r11c/build/tools/ndk-common.sh
+--- android-ndk-r11c.orig/build/tools/ndk-common.sh	2016-03-30 09:23:10.000000000 +0200
++++ android-ndk-r11c/build/tools/ndk-common.sh	2016-04-16 16:14:39.509976342 +0200
+@@ -270,6 +270,8 @@
+     ;;
+     powerpc) HOST_ARCH=ppc
+     ;;
++    aarch64) HOST_ARCH=arm64
++    ;;
+ esac
+ 
+ HOST_FILE_PROGRAM="file"
+diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/tools/prebuilt-common.sh android-ndk-r11c/build/tools/prebuilt-common.sh
+--- android-ndk-r11c.orig/build/tools/prebuilt-common.sh	2016-03-30 09:23:10.000000000 +0200
++++ android-ndk-r11c/build/tools/prebuilt-common.sh	2016-04-16 16:13:18.609976373 +0200
+@@ -1014,6 +1014,12 @@
+         linux-x86_64)
+             ABI_CONFIGURE_BUILD=x86_64-linux-gnu
+             ;;
++	linux-ppc)
++	    ABI_CONFIGURE_BUILD=powerpc-linux-gnu
++	    ;;
++	linux-arm64)
++	    ABI_CONFIGURE_BUILD=aarch64-unknown-linux-gnu
++	    ;;
+         darwin-x86)
+             ABI_CONFIGURE_BUILD=i686-apple-darwin
+             ;;
+@@ -1039,6 +1045,9 @@
+ 
+     prepare_common_build
+     HOST_GMP_ABI=$HOST_BITS
++    if [ "$HOST_ARCH" = "arm64" ] ; then
++        HOST_GMP_ABI=
++    fi
+ 
+     # Now handle the --mingw/--darwin flag
+     if [ "$MINGW" = "yes" -o "$DARWIN" = "yes" ] ; then
+@@ -1205,6 +1214,8 @@
+         RET=darwin-x86_64  # let the following handles 32-bit case
+     fi
+     case $RET in
++        linux-ppc|linux-arm64)
++            ;;
+         linux-*)
+             RET=linux-x86_64
+             ;;
