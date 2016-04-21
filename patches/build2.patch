@@ -1,0 +1,388 @@
+diff --git a/core/clang/config.mk b/core/clang/config.mk
+index 756bf49..d5921f8 100644
+--- a/core/clang/config.mk
++++ b/core/clang/config.mk
+@@ -2,7 +2,7 @@
+ 
+ LLVM_PREBUILTS_VERSION ?= 3.8
+ LLVM_PREBUILTS_BASE ?= prebuilts/clang/host
+-LLVM_PREBUILTS_PATH := $(LLVM_PREBUILTS_BASE)/$(BUILD_OS)-x86/$(LLVM_PREBUILTS_VERSION)/bin
++LLVM_PREBUILTS_PATH := $(LLVM_PREBUILTS_BASE)/$(BUILD_OS)-$(BUILD_ARCH)/$(LLVM_PREBUILTS_VERSION)/bin
+ LLVM_RTLIB_PATH := $(LLVM_PREBUILTS_PATH)/../lib/clang/$(LLVM_PREBUILTS_VERSION)/lib/linux/
+ 
+ CLANG := $(LLVM_PREBUILTS_PATH)/clang$(BUILD_EXECUTABLE_SUFFIX)
+diff --git a/core/envsetup.mk b/core/envsetup.mk
+index 050d445..e1ad2fc 100644
+--- a/core/envsetup.mk
++++ b/core/envsetup.mk
+@@ -60,9 +60,11 @@ BUILD_OS := $(HOST_OS)
+ HOST_CROSS_OS :=
+ # We can cross-build Windows binaries on Linux
+ ifeq ($(HOST_OS),linux)
++ifneq (,$(findstring x86,$(UNAME)))
+ HOST_CROSS_OS := windows
+ HOST_CROSS_ARCH := x86
+ endif
++endif
+ 
+ ifeq ($(HOST_OS),)
+ $(error Unable to determine HOST_OS from uname -sm: $(UNAME)!)
+@@ -76,6 +78,16 @@ ifneq (,$(findstring x86_64,$(UNAME)))
+ else
+ ifneq (,$(findstring x86,$(UNAME)))
+ $(error Building on a 32-bit x86 host is not supported: $(UNAME)!)
++else
++ifneq (,$(findstring ppc,$(UNAME)))
++  HOST_ARCH := ppc
++  HOST_IS_64_BIT := false
++else
++ifneq (,$(findstring aarch64,$(UNAME)))
++  HOST_ARCH := arm64
++  HOST_IS_64_BIT := true
++endif
++endif
+ endif
+ endif
+ 
+@@ -98,7 +110,11 @@ endif
+ endif
+ 
+ # We don't want to move all the prebuilt host tools to a $(HOST_OS)-x86_64 dir.
+-HOST_PREBUILT_ARCH := x86
++ifeq ($(HOST_ARCH),x86_64)
++  HOST_PREBUILT_ARCH := x86
++else
++  HOST_PREBUILT_ARCH := $(HOST_ARCH)
++endif
+ # This is the standard way to name a directory containing prebuilt host
+ # objects. E.g., prebuilt/$(HOST_PREBUILT_TAG)/cc
+ HOST_PREBUILT_TAG := $(BUILD_OS)-$(HOST_PREBUILT_ARCH)
+diff --git a/core/clang/HOST_arm64.mk b/core/clang/HOST_arm64.mk
+new file mode 100644
+index 0000000..86b65ae
+--- /dev/null
++++ b/core/clang/HOST_arm64.mk
+@@ -0,0 +1,69 @@
++
++include $(BUILD_SYSTEM)/clang/arm64.mk
++
++ifeq ($(HOST_OS),linux)
++CLANG_CONFIG_arm64_HOST_TRIPLE := aarch64-unknown-linux-gnu
++CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_ASFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_ASFLAGS)
++CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_CFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_CFLAGS)
++CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_CPPFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_CPPFLAGS)
++CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_LDFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_LDFLAGS)
++endif
++
++CLANG_CONFIG_arm64_HOST_EXTRA_ASFLAGS := \
++  $(CLANG_CONFIG_EXTRA_ASFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_ASFLAGS) \
++  $(CLANG_CONFIG_arm64_EXTRA_ASFLAGS) \
++  $(CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_ASFLAGS) \
++  -target $(CLANG_CONFIG_arm64_HOST_TRIPLE)
++
++CLANG_CONFIG_arm64_HOST_EXTRA_CFLAGS := \
++  $(CLANG_CONFIG_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_arm64_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_arm64_HOST_EXTRA_ASFLAGS)
++
++CLANG_CONFIG_arm64_HOST_EXTRA_CONLYFLAGS := \
++  $(CLANG_CONFIG_EXTRA_CONLYFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_CONLYFLAGS) \
++  $(CLANG_CONFIG_arm64_EXTRA_CONLYFLAGS) \
++  $(CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_CONLYFLAGS)
++
++CLANG_CONFIG_arm64_HOST_EXTRA_CPPFLAGS := \
++  $(CLANG_CONFIG_EXTRA_CPPFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_CPPFLAGS) \
++  $(CLANG_CONFIG_arm64_EXTRA_CPPFLAGS) \
++  $(CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_CPPFLAGS) \
++  -target $(CLANG_CONFIG_arm64_HOST_TRIPLE)
++
++CLANG_CONFIG_arm64_HOST_EXTRA_LDFLAGS := \
++  $(CLANG_CONFIG_EXTRA_LDFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_LDFLAGS) \
++  $(CLANG_CONFIG_arm64_EXTRA_LDFLAGS) \
++  $(CLANG_CONFIG_arm64_HOST_COMBO_EXTRA_LDFLAGS) \
++  -target $(CLANG_CONFIG_arm64_HOST_TRIPLE)
++
++define convert-to-host-clang-flags
++  $(strip \
++  $(call subst-clang-incompatible-arm64-flags,\
++  $(filter-out $(CLANG_CONFIG_arm64_UNKNOWN_CFLAGS),\
++  $(1))))
++endef
++
++CLANG_HOST_GLOBAL_CFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_CFLAGS)) \
++  $(CLANG_CONFIG_arm64_HOST_EXTRA_CFLAGS)
++
++CLANG_HOST_GLOBAL_CONLYFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_CONLYFLAGS)) \
++  $(CLANG_CONFIG_arm64_HOST_EXTRA_CONLYFLAGS)
++
++CLANG_HOST_GLOBAL_CPPFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_CPPFLAGS)) \
++  $(CLANG_CONFIG_arm64_HOST_EXTRA_CPPFLAGS)
++
++CLANG_HOST_GLOBAL_LDFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_LDFLAGS)) \
++  $(CLANG_CONFIG_arm64_HOST_EXTRA_LDFLAGS)
++
++HOST_LIBPROFILE_RT := $(LLVM_RTLIB_PATH)/libclang_rt.profile-arm64.a
+diff --git a/core/clang/HOST_ppc.mk b/core/clang/HOST_ppc.mk
+new file mode 100644
+index 0000000..6e68914
+--- /dev/null
++++ b/core/clang/HOST_ppc.mk
+@@ -0,0 +1,69 @@
++
++include $(BUILD_SYSTEM)/clang/ppc.mk
++
++ifeq ($(HOST_OS),linux)
++CLANG_CONFIG_ppc_HOST_TRIPLE := powerpc-linux-gnu
++CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_ASFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_ASFLAGS)
++CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_CFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_CFLAGS)
++CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_CPPFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_CPPFLAGS)
++CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_LDFLAGS := $(CLANG_CONFIG_arm_LINUX_HOST_EXTRA_LDFLAGS)
++endif
++
++CLANG_CONFIG_ppc_HOST_EXTRA_ASFLAGS := \
++  $(CLANG_CONFIG_EXTRA_ASFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_ASFLAGS) \
++  $(CLANG_CONFIG_ppc_EXTRA_ASFLAGS) \
++  $(CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_ASFLAGS) \
++  -target $(CLANG_CONFIG_ppc_HOST_TRIPLE)
++
++CLANG_CONFIG_ppc_HOST_EXTRA_CFLAGS := \
++  $(CLANG_CONFIG_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_ppc_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_CFLAGS) \
++  $(CLANG_CONFIG_ppc_HOST_EXTRA_ASFLAGS)
++
++CLANG_CONFIG_ppc_HOST_EXTRA_CONLYFLAGS := \
++  $(CLANG_CONFIG_EXTRA_CONLYFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_CONLYFLAGS) \
++  $(CLANG_CONFIG_ppc_EXTRA_CONLYFLAGS) \
++  $(CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_CONLYFLAGS)
++
++CLANG_CONFIG_ppc_HOST_EXTRA_CPPFLAGS := \
++  $(CLANG_CONFIG_EXTRA_CPPFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_CPPFLAGS) \
++  $(CLANG_CONFIG_ppc_EXTRA_CPPFLAGS) \
++  $(CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_CPPFLAGS) \
++  -target $(CLANG_CONFIG_ppc_HOST_TRIPLE)
++
++CLANG_CONFIG_ppc_HOST_EXTRA_LDFLAGS := \
++  $(CLANG_CONFIG_EXTRA_LDFLAGS) \
++  $(CLANG_CONFIG_HOST_EXTRA_LDFLAGS) \
++  $(CLANG_CONFIG_ppc_EXTRA_LDFLAGS) \
++  $(CLANG_CONFIG_ppc_HOST_COMBO_EXTRA_LDFLAGS) \
++  -target $(CLANG_CONFIG_ppc_HOST_TRIPLE)
++
++define convert-to-host-clang-flags
++  $(strip \
++  $(call subst-clang-incompatible-ppc-flags,\
++  $(filter-out $(CLANG_CONFIG_ppc_UNKNOWN_CFLAGS),\
++  $(1))))
++endef
++
++CLANG_HOST_GLOBAL_CFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_CFLAGS)) \
++  $(CLANG_CONFIG_ppc_HOST_EXTRA_CFLAGS)
++
++CLANG_HOST_GLOBAL_CONLYFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_CONLYFLAGS)) \
++  $(CLANG_CONFIG_ppc_HOST_EXTRA_CONLYFLAGS)
++
++CLANG_HOST_GLOBAL_CPPFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_CPPFLAGS)) \
++  $(CLANG_CONFIG_ppc_HOST_EXTRA_CPPFLAGS)
++
++CLANG_HOST_GLOBAL_LDFLAGS := \
++  $(call convert-to-host-clang-flags,$(HOST_GLOBAL_LDFLAGS)) \
++  $(CLANG_CONFIG_ppc_HOST_EXTRA_LDFLAGS)
++
++HOST_LIBPROFILE_RT := $(LLVM_RTLIB_PATH)/libclang_rt.profile-ppc.a
+diff --git a/core/clang/ppc.mk b/core/clang/ppc.mk
+new file mode 100644
+index 0000000..2cc81ef
+--- /dev/null
++++ b/core/clang/ppc.mk
+@@ -0,0 +1,22 @@
++# Clang flags for ppc arch, target or host.
++
++CLANG_CONFIG_ppc_EXTRA_ASFLAGS :=
++
++CLANG_CONFIG_ppc_EXTRA_CFLAGS :=
++
++CLANG_CONFIG_ppc_EXTRA_LDFLAGS :=
++
++# Include common unknown flags
++CLANG_CONFIG_ppc_UNKNOWN_CFLAGS := \
++  $(CLANG_CONFIG_UNKNOWN_CFLAGS) \
++  -fgcse-after-reload \
++  -frerun-cse-after-loop \
++  -frename-registers \
++  -fno-strict-volatile-bitfields \
++  -fno-align-jumps \
++  -Wa,--noexecstack
++
++# We don't have any ppc flags to substitute yet.
++define subst-clang-incompatible-ppc-flags
++  $(1)
++endef
+diff --git a/core/combo/HOST_linux-arm64.mk b/core/combo/HOST_linux-arm64.mk
+new file mode 100644
+index 0000000..f6057bd
+--- /dev/null
++++ b/core/combo/HOST_linux-arm64.mk
+@@ -0,0 +1,59 @@
++#
++# Copyright (C) 2006 The Android Open Source Project
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++
++# Configuration for builds hosted on linux-arm64.
++# Included by combo/select.mk
++
++ifeq ($(strip $(HOST_TOOLCHAIN_PREFIX)),)
++# HOST_TOOLCHAIN_PREFIX := prebuilts/gcc/linux-arm64/host/arm64-linux-glibc2.15-4.8/bin/arm64-linux-
++endif
++HOST_CC  := $(HOST_TOOLCHAIN_PREFIX)gcc
++HOST_CXX := $(HOST_TOOLCHAIN_PREFIX)g++
++HOST_AR  := $(HOST_TOOLCHAIN_PREFIX)ar
++HOST_READELF  := $(HOST_TOOLCHAIN_PREFIX)readelf
++HOST_NM  := $(HOST_TOOLCHAIN_PREFIX)nm
++
++define $(combo_var_prefix)transform-shared-lib-to-toc
++$(call _gen_toc_command_for_elf,$(1),$(2))
++endef
++
++# gcc location for clang; to be updated when clang is updated
++HOST_TOOLCHAIN_FOR_CLANG := prebuilts/gcc/linux-arm64/host/arm64-linux-glibc2.15-4.8
++
++HOST_GLOBAL_CFLAGS += -m64 -Wa,--noexecstack
++HOST_GLOBAL_LDFLAGS += -m64 -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
++
++ifneq ($(strip $(BUILD_HOST_static)),)
++# Statically-linked binaries are desirable for sandboxed environment
++HOST_GLOBAL_LDFLAGS += -static
++endif # BUILD_HOST_static
++
++HOST_GLOBAL_CFLAGS += -fPIC
++
++#  -no-canonical-prefixes
++
++HOST_GLOBAL_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector
++
++# Workaround differences in inttypes.h between host and target.
++# See bug 12708004.
++HOST_GLOBAL_CFLAGS += -D__STDC_FORMAT_MACROS -D__STDC_CONSTANT_MACROS
++
++HOST_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
++
++# $(1): The file to check
++define get-file-size
++stat --format "%s" "$(1)" | tr -d '\n'
++endef
+diff --git a/core/combo/HOST_linux-ppc.mk b/core/combo/HOST_linux-ppc.mk
+new file mode 100644
+index 0000000..fe90f6a
+--- /dev/null
++++ b/core/combo/HOST_linux-ppc.mk
+@@ -0,0 +1,59 @@
++#
++# Copyright (C) 2006 The Android Open Source Project
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++
++# Configuration for builds hosted on linux-ppc.
++# Included by combo/select.mk
++
++ifeq ($(strip $(HOST_TOOLCHAIN_PREFIX)),)
++# HOST_TOOLCHAIN_PREFIX := prebuilts/gcc/linux-ppc/host/ppc-linux-glibc2.15-4.8/bin/ppc-linux-
++endif
++HOST_CC  := $(HOST_TOOLCHAIN_PREFIX)gcc
++HOST_CXX := $(HOST_TOOLCHAIN_PREFIX)g++
++HOST_AR  := $(HOST_TOOLCHAIN_PREFIX)ar
++HOST_READELF  := $(HOST_TOOLCHAIN_PREFIX)readelf
++HOST_NM  := $(HOST_TOOLCHAIN_PREFIX)nm
++
++define $(combo_var_prefix)transform-shared-lib-to-toc
++$(call _gen_toc_command_for_elf,$(1),$(2))
++endef
++
++# gcc location for clang; to be updated when clang is updated
++HOST_TOOLCHAIN_FOR_CLANG := prebuilts/gcc/linux-ppc/host/ppc-linux-glibc2.15-4.8
++
++HOST_GLOBAL_CFLAGS += -m64 -Wa,--noexecstack
++HOST_GLOBAL_LDFLAGS += -m64 -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
++
++ifneq ($(strip $(BUILD_HOST_static)),)
++# Statically-linked binaries are desirable for sandboxed environment
++HOST_GLOBAL_LDFLAGS += -static
++endif # BUILD_HOST_static
++
++HOST_GLOBAL_CFLAGS += -fPIC
++
++#  -no-canonical-prefixes
++
++HOST_GLOBAL_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector
++
++# Workaround differences in inttypes.h between host and target.
++# See bug 12708004.
++HOST_GLOBAL_CFLAGS += -D__STDC_FORMAT_MACROS -D__STDC_CONSTANT_MACROS
++
++HOST_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
++
++# $(1): The file to check
++define get-file-size
++stat --format "%s" "$(1)" | tr -d '\n'
++endef
+diff --git a/core/main.mk b/core/main.mk
+index d9ff68e..927601d 100644
+--- a/core/main.mk
++++ b/core/main.mk
+@@ -177,6 +177,8 @@ $(warning ************************************************************)
+ $(error Directory names containing spaces not supported)
+ endif
+ 
++ifeq ($(strip $(SKIP_JAVA_CHECK)),)
++
+ java_version_str := $(shell unset _JAVA_OPTIONS && java -version 2>&1)
+ javac_version_str := $(shell unset _JAVA_OPTIONS && javac -version 2>&1)
+ 
+@@ -256,6 +258,7 @@ $(info ************************************************************)
+ $(error stop)
+ endif
+ 
++endif
+ 
+ ifndef BUILD_EMULATOR
+   # Emulator binaries are now provided under prebuilts/android-emulator/

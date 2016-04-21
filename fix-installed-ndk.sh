@@ -43,7 +43,7 @@ EOF
 chmod a+x ${cmd}
 done
 
-for fn in "${OUT_DIR}"/dist/*; do
+for fn in "${OUT_DIR}"/dist/* "${OUT_DIR}"/stage2/*.tar.bz2; do
   pkg=`basename "${fn}"`
   host_tag=`echo "${pkg}" | sed -e 's/^.*-\(linux-[^.]*\)[.].*$/\1/'`
   case "${pkg}" in
@@ -59,6 +59,17 @@ for fn in "${OUT_DIR}"/dist/*; do
 	  rm -rf "${toolchain}/prebuilt/${host_tag}/include"
 	  rm -rf "${toolchain}/prebuilt/${host_tag}/share"
 	  rm -rf "${toolchain}/prebuilt/${host_tag}/lib/gcc"/*/*/finclude
+      fi
+      cd ..
+      ;;
+   clang-*-linux-*.tar.bz2)
+      cd toolchains
+      if [ -d "llvm/prebuilt/${host_tag}" ]; then
+	  echo Already installed "${pkg}"
+      else
+	  echo Installing package "${pkg}"
+	  mkdir "llvm/prebuilt/${host_tag}"
+	  tar -C "llvm/prebuilt/${host_tag}" --strip-components=1 -x -j -f "${fn}"
       fi
       cd ..
       ;;

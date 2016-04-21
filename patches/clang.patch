@@ -1,0 +1,72 @@
+diff --git a/Android.mk b/Android.mk
+index bff3554..0744858 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -24,22 +24,28 @@ clang-toolchain: \
+     libprofile_rt \
+ 
+ ifneq ($(HOST_OS),darwin)
++
++ifneq (,$(filter x86,$(HOST_ARCH)))
+ clang-toolchain: \
+     host_cross_clang \
+-    libasan \
+     libasan_32 \
+-    libasan_cxx \
+     libasan_cxx_32 \
+     libprofile_rt_32 \
+     libtsan \
+     libtsan_cxx \
+-    libubsan_standalone \
+     libubsan_standalone_32 \
+-    libubsan_standalone_cxx \
+     libubsan_standalone_cxx_32 \
+ 
+ endif
+ 
++clang-toolchain: \
++    libasan \
++    libasan_cxx \
++    libubsan_standalone \
++    libubsan_standalone_cxx \
++
++endif
++
+ ifneq (,$(filter arm arm64 x86,$(TARGET_ARCH)))
+ clang-toolchain: \
+     $(ADDRESS_SANITIZER_RUNTIME_LIBRARY) \
+diff --git a/build.py b/build.py
+index 4e56924..52c74e4 100644
+--- a/build.py
++++ b/build.py
+@@ -23,6 +23,7 @@ import os
+ import shutil
+ import subprocess
+ import sys
++import platform
+ 
+ import version
+ 
+@@ -312,6 +313,8 @@ def install_host_profile_rt(build_dir, host, lib_dir):
+     arch_to_obj_dir = {
+         'i686': 'obj32',
+         'x86_64': 'obj',
++        'arm64': 'obj',
++        'ppc': 'obj',
+     }
+ 
+     for arch, obj_dir in arch_to_obj_dir.items():
+@@ -436,7 +439,12 @@ def main():
+     args = parse_args()
+ 
+     if sys.platform.startswith('linux'):
+-        hosts = ['linux-x86', 'windows-x86']
++        if platform.machine() == 'aarch64':
++            hosts = ['linux-arm64']
++        elif platform.machine() in ['ppc', 'ppc64']:
++            hosts = ['linux-ppc']
++        else:
++            hosts = ['linux-x86', 'windows-x86']
+     elif sys.platform == 'darwin':
+         hosts = ['darwin-x86']
+     else:

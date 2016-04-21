@@ -1,5 +1,6 @@
 /bin/
 /src/
+/llvmsrc/
 /out/
 /.repo_.gitconfig.json
 /.repoconfig/
