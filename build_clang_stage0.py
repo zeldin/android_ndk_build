@@ -14,7 +14,7 @@ def main():
     env['FORCE_BUILD_LLVM_COMPONENTS'] = 'true'
     env['SKIP_LLVM_TESTS'] = 'true'
     env['TARGET_PRODUCT'] = 'sdk'
-    o = args.out_dir+'/host/'+build_support.host_to_tag(args.host)
+    o = env['OUT_DIR']+'/host/'+build_support.host_to_tag(args.host)
 
     prebuilts_path=args.prebuilt_clang_path
 
