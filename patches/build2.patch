@@ -302,10 +302,10 @@ index 0000000..f6057bd
 +endef
 diff --git a/core/combo/HOST_linux-ppc.mk b/core/combo/HOST_linux-ppc.mk
 new file mode 100644
-index 0000000..fe90f6a
+index 0000000..2ca2e3e
 --- /dev/null
 +++ b/core/combo/HOST_linux-ppc.mk
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,61 @@
 +#
 +# Copyright (C) 2006 The Android Open Source Project
 +#
@@ -353,7 +353,9 @@ index 0000000..fe90f6a
 +
 +#  -no-canonical-prefixes
 +
-+HOST_GLOBAL_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector
++HOST_GLOBAL_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2
++
++#  -fstack-protector
 +
 +# Workaround differences in inttypes.h between host and target.
 +# See bug 12708004.
