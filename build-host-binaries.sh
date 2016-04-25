@@ -79,6 +79,8 @@ else
   patch -p1 < "${p}"/python.patch
   cd ../binutils
   patch -p1 < "${p}"/binutils.patch
+  cd ../gcc
+  patch -p1 < "${p}"/gcc.patch
   cd ../build
   patch -p1 < "${p}"/build.patch
   cd ../..
@@ -179,6 +181,8 @@ else
   patch -p1 < "${p}"/build2.patch
   cd ../external/clang
   patch -p1 < "${p}"/clang.patch
+  cd ../llvm
+  patch -p1 < "${p}"/llvm.patch
   cd ../..
   touch stmp-patch
 fi

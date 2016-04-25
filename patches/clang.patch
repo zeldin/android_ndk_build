@@ -70,3 +70,20 @@ index 4e56924..52c74e4 100644
      elif sys.platform == 'darwin':
          hosts = ['darwin-x86']
      else:
+diff --git a/tools/driver/Android.mk b/tools/driver/Android.mk
+index bb9f3c7..0390544 100644
+--- a/tools/driver/Android.mk
++++ b/tools/driver/Android.mk
+@@ -68,6 +68,12 @@ LOCAL_STATIC_LIBRARIES := \
+   libLLVMAArch64Desc \
+   libLLVMAArch64AsmPrinter \
+   libLLVMAArch64Utils \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCCodeGen \
++  libLLVMPPCDisassembler \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
+   libLLVMIRReader \
+   libLLVMAsmParser \
+   libLLVMAsmPrinter \

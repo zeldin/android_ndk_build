@@ -1,0 +1,500 @@
+diff --git a/Android.mk b/Android.mk
+index dc97ee8..ecbf872 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -96,6 +96,15 @@ subdirs += \
+   lib/Target/X86/TargetInfo \
+   lib/Target/X86/Utils
+ 
++# PowerPC Code Generation Libraries
++subdirs += \
++  lib/Target/PowerPC  \
++  lib/Target/PowerPC/AsmParser \
++  lib/Target/PowerPC/InstPrinter \
++  lib/Target/PowerPC/Disassembler \
++  lib/Target/PowerPC/MCTargetDesc \
++  lib/Target/PowerPC/TargetInfo
++
+ # LLVM Command Line Tools
+ subdirs += \
+   tools/bugpoint \
+diff --git a/host/include/llvm/Config/AsmParsers.def b/host/include/llvm/Config/AsmParsers.def
+index 8fd67da..817c666 100644
+--- a/host/include/llvm/Config/AsmParsers.def
++++ b/host/include/llvm/Config/AsmParsers.def
+@@ -28,5 +28,6 @@ LLVM_ASM_PARSER(ARM)
+ LLVM_ASM_PARSER(Mips)
+ LLVM_ASM_PARSER(X86)
+ LLVM_ASM_PARSER(AArch64)
++LLVM_ASM_PARSER(PowerPC)
+ 
+ #undef LLVM_ASM_PARSER
+diff --git a/host/include/llvm/Config/AsmPrinters.def b/host/include/llvm/Config/AsmPrinters.def
+index 07f6adf..526d7d0 100644
+--- a/host/include/llvm/Config/AsmPrinters.def
++++ b/host/include/llvm/Config/AsmPrinters.def
+@@ -28,5 +28,6 @@ LLVM_ASM_PRINTER(ARM)
+ LLVM_ASM_PRINTER(Mips)
+ LLVM_ASM_PRINTER(X86)
+ LLVM_ASM_PRINTER(AArch64)
++LLVM_ASM_PRINTER(PowerPC)
+ 
+ #undef LLVM_ASM_PRINTER
+diff --git a/host/include/llvm/Config/Disassemblers.def b/host/include/llvm/Config/Disassemblers.def
+index 18557af..fb1f5fa 100644
+--- a/host/include/llvm/Config/Disassemblers.def
++++ b/host/include/llvm/Config/Disassemblers.def
+@@ -28,5 +28,6 @@ LLVM_DISASSEMBLER(ARM)
+ LLVM_DISASSEMBLER(Mips)
+ LLVM_DISASSEMBLER(X86)
+ LLVM_DISASSEMBLER(AArch64)
++LLVM_DISASSEMBLER(PowerPC)
+ 
+ #undef LLVM_DISASSEMBLER
+diff --git a/host/include/llvm/Config/Targets.def b/host/include/llvm/Config/Targets.def
+index 2985cf3..e593725 100644
+--- a/host/include/llvm/Config/Targets.def
++++ b/host/include/llvm/Config/Targets.def
+@@ -27,5 +27,6 @@ LLVM_TARGET(ARM)
+ LLVM_TARGET(Mips)
+ LLVM_TARGET(X86)
+ LLVM_TARGET(AArch64)
++LLVM_TARGET(PowerPC)
+ 
+ #undef LLVM_TARGET
+diff --git a/include/llvm/Config/llvm-platform-config.h b/include/llvm/Config/llvm-platform-config.h
+index c9e82da..f3e2875 100644
+--- a/include/llvm/Config/llvm-platform-config.h
++++ b/include/llvm/Config/llvm-platform-config.h
+@@ -115,6 +115,15 @@
+ /* LLVM name for the native target MC init function, if available */
+ #define LLVM_NATIVE_TARGETMC LLVMInitializeAArch64TargetMC
+ 
++#elif defined(__powerpc__) || defined(__powerpc64__)
++
++/* LLVM architecture name for the native architecture, if available */
++#define LLVM_NATIVE_ARCH PowerPC
++
++/* Host triple LLVM will be executed on */
++#define LLVM_HOST_TRIPLE "powerpc-unknown-linux-gnu"
++
++
+ #else
+ 
+ #error "Unknown native architecture"
+diff --git a/lib/Target/PowerPC/Android.mk b/lib/Target/PowerPC/Android.mk
+new file mode 100644
+index 0000000..d773cd4
+--- /dev/null
++++ b/lib/Target/PowerPC/Android.mk
+@@ -0,0 +1,74 @@
++LOCAL_PATH := $(call my-dir)
++
++powerpc_codegen_TBLGEN_TABLES := \
++  PPCGenRegisterInfo.inc \
++  PPCGenAsmMatcher.inc \
++  PPCGenAsmWriter.inc \
++  PPCGenInstrInfo.inc \
++  PPCGenDAGISel.inc \
++  PPCGenSubtargetInfo.inc \
++  PPCGenCallingConv.inc \
++  PPCGenMCCodeEmitter.inc \
++  PPCGenFastISel.inc \
++  PPCGenDisassemblerTables.inc
++
++powerpc_codegen_SRC_FILES := \
++  PPCAsmPrinter.cpp \
++  PPCBranchSelector.cpp \
++  PPCCTRLoops.cpp \
++  PPCHazardRecognizers.cpp \
++  PPCInstrInfo.cpp \
++  PPCISelDAGToDAG.cpp \
++  PPCISelLowering.cpp \
++  PPCEarlyReturn.cpp \
++  PPCFastISel.cpp \
++  PPCFrameLowering.cpp \
++  PPCLoopDataPrefetch.cpp \
++  PPCLoopPreIncPrep.cpp \
++  PPCMCInstLower.cpp \
++  PPCMachineFunctionInfo.cpp \
++  PPCRegisterInfo.cpp \
++  PPCSubtarget.cpp \
++  PPCTargetMachine.cpp \
++  PPCTargetObjectFile.cpp \
++  PPCTargetTransformInfo.cpp \
++  PPCTOCRegDeps.cpp \
++  PPCTLSDynamicCall.cpp \
++  PPCVSXCopy.cpp \
++  PPCVSXFMAMutate.cpp \
++  PPCVSXSwapRemoval.cpp
++
++# For the host
++# =====================================================
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++LOCAL_MODULE:= libLLVMPPCCodeGen
++LOCAL_MODULE_HOST_OS := darwin linux windows
++
++LOCAL_SRC_FILES := $(powerpc_codegen_SRC_FILES)
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/MCTargetDesc
++TBLGEN_TABLES := $(powerpc_codegen_TBLGEN_TABLES)
++
++include $(LLVM_HOST_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(LLVM_GEN_INTRINSICS_MK)
++include $(BUILD_HOST_STATIC_LIBRARY)
++
++# For the device only
++# =====================================================
++ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++LOCAL_MODULE:= libLLVMPPCCodeGen
++
++LOCAL_SRC_FILES := $(powerpc_codegen_SRC_FILES)
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/MCTargetDesc
++TBLGEN_TABLES := $(powerpc_codegen_TBLGEN_TABLES)
++
++include $(LLVM_DEVICE_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(LLVM_GEN_INTRINSICS_MK)
++include $(BUILD_STATIC_LIBRARY)
++endif
+diff --git a/lib/Target/PowerPC/AsmParser/Android.mk b/lib/Target/PowerPC/AsmParser/Android.mk
+new file mode 100644
+index 0000000..33839fd
+--- /dev/null
++++ b/lib/Target/PowerPC/AsmParser/Android.mk
+@@ -0,0 +1,61 @@
++LOCAL_PATH := $(call my-dir)
++
++#===---------------------------------------------------------------===
++# libARMAsmParser (common)
++#===---------------------------------------------------------------===
++
++powerpc_asm_parser_SRC_FILES := \
++  PPCAsmParser.cpp
++
++powerpc_asm_parser_TBLGEN_TABLES := \
++  PPCGenInstrInfo.inc \
++  PPCGenRegisterInfo.inc \
++  PPCGenAsmMatcher.inc \
++  PPCGenSubtargetInfo.inc
++
++powerpc_asm_parser_TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++powerpc_asm_parser_C_INCLUDES := $(LOCAL_PATH)/..
++
++
++#===---------------------------------------------------------------===
++# libPPCAsmParser (host)
++#===---------------------------------------------------------------===
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++LOCAL_MODULE:= libLLVMPPCAsmParser
++LOCAL_MODULE_HOST_OS := darwin linux windows
++LOCAL_SRC_FILES := $(powerpc_asm_parser_SRC_FILES)
++LOCAL_C_INCLUDES += $(powerpc_asm_parser_C_INCLUDES)
++TBLGEN_TABLES := $(powerpc_asm_parser_TBLGEN_TABLES)
++TBLGEN_TD_DIR := $(powerpc_asm_parser_TBLGEN_TD_DIR)
++
++include $(LLVM_HOST_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++# Override the default optimization level to work around taking forever (~50m)
++# to compile PPCAsmParser.cpp on Mac with gcc 4.2,
++# or on Linux with mingw32msvc-gcc 4.2, which is used to cross-compile
++# the win_sdk.
++LOCAL_CFLAGS_darwin += -O0
++LOCAL_CFLAGS_windows += -O0
++include $(BUILD_HOST_STATIC_LIBRARY)
++
++
++#===---------------------------------------------------------------===
++# libPPCAsmParser (target)
++#===---------------------------------------------------------------===
++ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++LOCAL_MODULE:= libLLVMPPCAsmParser
++LOCAL_SRC_FILES := $(powerpc_asm_parser_SRC_FILES)
++LOCAL_C_INCLUDES += $(powerpc_asm_parser_C_INCLUDES)
++TBLGEN_TABLES := $(powerpc_asm_parser_TBLGEN_TABLES)
++TBLGEN_TD_DIR := $(powerpc_asm_parser_TBLGEN_TD_DIR)
++
++include $(LLVM_DEVICE_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_STATIC_LIBRARY)
++endif
+diff --git a/lib/Target/PowerPC/Disassembler/Android.mk b/lib/Target/PowerPC/Disassembler/Android.mk
+new file mode 100644
+index 0000000..e3d3ba1
+--- /dev/null
++++ b/lib/Target/PowerPC/Disassembler/Android.mk
+@@ -0,0 +1,53 @@
++LOCAL_PATH := $(call my-dir)
++
++powerpc_disassembler_TBLGEN_TABLES := \
++  PPCGenDisassemblerTables.inc \
++  PPCGenInstrInfo.inc \
++  PPCGenSubtargetInfo.inc \
++  PPCGenRegisterInfo.inc
++
++powerpc_disassembler_SRC_FILES := \
++  PPCDisassembler.cpp
++
++# For the device
++# =====================================================
++ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++TBLGEN_TABLES := $(powerpc_disassembler_TBLGEN_TABLES)
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++LOCAL_SRC_FILES := $(powerpc_disassembler_SRC_FILES)
++
++LOCAL_C_INCLUDES += $(LOCAL_PATH)/..
++
++LOCAL_MODULE:= libLLVMPPCDisassembler
++
++include $(LLVM_DEVICE_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_STATIC_LIBRARY)
++endif
++
++# For the host
++# =====================================================
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++TBLGEN_TABLES := $(powerpc_disassembler_TBLGEN_TABLES)
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++LOCAL_SRC_FILES := $(powerpc_disassembler_SRC_FILES)
++
++LOCAL_C_INCLUDES += $(LOCAL_PATH)/..
++
++LOCAL_MODULE:= libLLVMPPCDisassembler
++
++LOCAL_MODULE_HOST_OS := darwin linux windows
++
++include $(LLVM_HOST_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_HOST_STATIC_LIBRARY)
++
+diff --git a/lib/Target/PowerPC/InstPrinter/Android.mk b/lib/Target/PowerPC/InstPrinter/Android.mk
+new file mode 100644
+index 0000000..282e62a
+--- /dev/null
++++ b/lib/Target/PowerPC/InstPrinter/Android.mk
+@@ -0,0 +1,55 @@
++LOCAL_PATH := $(call my-dir)
++
++powerpc_asm_printer_TBLGEN_TABLES := \
++  PPCGenAsmWriter.inc \
++  PPCGenRegisterInfo.inc \
++  PPCGenSubtargetInfo.inc \
++  PPCGenInstrInfo.inc
++
++powerpc_asm_printer_SRC_FILES := \
++  PPCInstPrinter.cpp
++
++# For the host
++# =====================================================
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++TBLGEN_TABLES := $(powerpc_asm_printer_TBLGEN_TABLES)
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++LOCAL_SRC_FILES := $(powerpc_asm_printer_SRC_FILES)
++
++LOCAL_MODULE:= libLLVMPPCAsmPrinter
++
++LOCAL_C_INCLUDES += \
++    $(LOCAL_PATH)/..
++
++LOCAL_MODULE_HOST_OS := darwin linux windows
++
++include $(LLVM_HOST_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_HOST_STATIC_LIBRARY)
++
++# For the device only
++# =====================================================
++ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++TBLGEN_TABLES := $(powerpc_asm_printer_TBLGEN_TABLES)
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++LOCAL_SRC_FILES := $(powerpc_asm_printer_SRC_FILES)
++
++LOCAL_C_INCLUDES+= \
++    $(LOCAL_PATH)/..
++
++LOCAL_MODULE:= libLLVMPPCAsmPrinter
++
++include $(LLVM_DEVICE_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_STATIC_LIBRARY)
++endif
++
+diff --git a/lib/Target/PowerPC/MCTargetDesc/Android.mk b/lib/Target/PowerPC/MCTargetDesc/Android.mk
+new file mode 100644
+index 0000000..a1176c2
+--- /dev/null
++++ b/lib/Target/PowerPC/MCTargetDesc/Android.mk
+@@ -0,0 +1,57 @@
++LOCAL_PATH := $(call my-dir)
++
++powerpc_mc_desc_TBLGEN_TABLES := \
++  PPCGenRegisterInfo.inc \
++  PPCGenInstrInfo.inc \
++  PPCGenMCCodeEmitter.inc \
++  PPCGenSubtargetInfo.inc
++
++powerpc_mc_desc_SRC_FILES := \
++  PPCAsmBackend.cpp \
++  PPCMCTargetDesc.cpp \
++  PPCMCAsmInfo.cpp \
++  PPCMCCodeEmitter.cpp \
++  PPCMCExpr.cpp \
++  PPCPredicates.cpp \
++  PPCMachObjectWriter.cpp \
++  PPCELFObjectWriter.cpp
++
++# For the host
++# =====================================================
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++
++LOCAL_MODULE:= libLLVMPPCDesc
++LOCAL_MODULE_HOST_OS := darwin linux windows
++
++LOCAL_SRC_FILES := $(powerpc_mc_desc_SRC_FILES)
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/..
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++TBLGEN_TABLES := $(powerpc_mc_desc_TBLGEN_TABLES)
++
++include $(LLVM_HOST_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(LLVM_GEN_INTRINSICS_MK)
++include $(BUILD_HOST_STATIC_LIBRARY)
++
++# For the device only
++# =====================================================
++ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++LOCAL_MODULE:= libLLVMPPCDesc
++
++LOCAL_SRC_FILES := $(powerpc_mc_desc_SRC_FILES)
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/..
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++TBLGEN_TABLES := $(powerpc_mc_desc_TBLGEN_TABLES)
++
++include $(LLVM_DEVICE_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(LLVM_GEN_INTRINSICS_MK)
++include $(BUILD_STATIC_LIBRARY)
++endif
+diff --git a/lib/Target/PowerPC/TargetInfo/Android.mk b/lib/Target/PowerPC/TargetInfo/Android.mk
+new file mode 100644
+index 0000000..1a8b33b
+--- /dev/null
++++ b/lib/Target/PowerPC/TargetInfo/Android.mk
+@@ -0,0 +1,53 @@
++LOCAL_PATH := $(call my-dir)
++
++powerpc_target_info_TBLGEN_TABLES := \
++  PPCGenSubtargetInfo.inc \
++  PPCGenRegisterInfo.inc \
++  PPCGenInstrInfo.inc
++
++powerpc_target_info_SRC_FILES := \
++  PowerPCTargetInfo.cpp
++
++# For the host
++# =====================================================
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++TBLGEN_TABLES := $(powerpc_target_info_TBLGEN_TABLES)
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++LOCAL_SRC_FILES := $(powerpc_target_info_SRC_FILES)
++
++LOCAL_C_INCLUDES +=	\
++	$(LOCAL_PATH)/..
++
++LOCAL_MODULE:= libLLVMPPCInfo
++
++LOCAL_MODULE_HOST_OS := darwin linux windows
++
++include $(LLVM_HOST_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_HOST_STATIC_LIBRARY)
++
++# For the device
++# =====================================================
++ifneq (true,$(DISABLE_LLVM_DEVICE_BUILDS))
++include $(CLEAR_VARS)
++include $(CLEAR_TBLGEN_VARS)
++
++TBLGEN_TABLES := $(powerpc_target_info_TBLGEN_TABLES)
++
++TBLGEN_TD_DIR := $(LOCAL_PATH)/..
++
++LOCAL_SRC_FILES := $(powerpc_target_info_SRC_FILES)
++
++LOCAL_C_INCLUDES +=	\
++	$(LOCAL_PATH)/..
++
++LOCAL_MODULE:= libLLVMPPCInfo
++
++include $(LLVM_DEVICE_BUILD_MK)
++include $(LLVM_TBLGEN_RULES_MK)
++include $(BUILD_STATIC_LIBRARY)
++endif
+diff --git a/shared_llvm.mk b/shared_llvm.mk
+index 7a8cf6f..bfb1e20 100644
+--- a/shared_llvm.mk
++++ b/shared_llvm.mk
+@@ -43,6 +43,14 @@ llvm_aarch64_static_libraries := \
+   libLLVMAArch64Utils \
+   libLLVMAArch64Disassembler
+ 
++llvm_powerpc_static_libraries := \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmParser \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler
++
+ llvm_post_static_libraries := \
+   libLLVMAsmPrinter \
+   libLLVMSelectionDAG \
+@@ -88,6 +96,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
+   $(llvm_x86_static_libraries) \
+   $(llvm_mips_static_libraries) \
+   $(llvm_aarch64_static_libraries) \
++  $(llvm_powerpc_static_libraries) \
+   $(llvm_host_static_libraries) \
+   $(llvm_post_static_libraries)
+ 

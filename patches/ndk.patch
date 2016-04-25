@@ -90,12 +90,15 @@ diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/tools/common-build-ho
 diff -burN -x '*.orig' -x '*~' android-ndk-r11c.orig/build/tools/ndk-common.sh android-ndk-r11c/build/tools/ndk-common.sh
 --- android-ndk-r11c.orig/build/tools/ndk-common.sh	2016-03-30 09:23:10.000000000 +0200
 +++ android-ndk-r11c/build/tools/ndk-common.sh	2016-04-16 16:14:39.509976342 +0200
-@@ -270,6 +270,8 @@
+@@ -268,7 +268,9 @@
      ;;
-     powerpc) HOST_ARCH=ppc
+     amd64) HOST_ARCH=x86_64
      ;;
-+    aarch64) HOST_ARCH=arm64
+-    powerpc) HOST_ARCH=ppc
++    powerpc|ppc*) HOST_ARCH=ppc
 +    ;;
++    aarch64) HOST_ARCH=arm64
+     ;;
  esac
  
  HOST_FILE_PROGRAM="file"

@@ -1,0 +1,21 @@
+diff --git a/build.py b/build.py
+index 908f7fd..49c6174 100755
+--- a/build.py
++++ b/build.py
+@@ -19,6 +19,7 @@ from __future__ import print_function
+ 
+ import os
+ import site
++import platform
+ 
+ site.addsitedir(os.path.join(os.path.dirname(__file__), '../../ndk/build/lib'))
+ 
+@@ -55,7 +56,7 @@ def main(args):
+         if args.host in ('windows', 'windows64'):
+             build_cmd.append('--mingw')
+ 
+-        if args.host != 'windows':
++        if args.host != 'windows' and not platform.machine() in ['ppc', 'ppc64']:
+             build_cmd.append('--try-64')
+ 
+         build_support.build(build_cmd, args)
