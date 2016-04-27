@@ -16,36 +16,44 @@ else
   NDK_VERSION="$2"
 fi
 
-HOME=`pwd`
+case "$0" in
+  /*) me="$0";;
+  *) me=`pwd`/"$0";;
+esac
+home=`dirname "$me"`
+
+HOME="$home"
 
 export CC ANDROID_BUILD_TOP OUT_DIR HOME
 
-if [ -x bin/repo ]; then
+bin="$WORKDIR"/bin
+
+if [ -x "${bin}"/repo ]; then
   echo Repo already downloaded
 else
   echo Downloading repo
-  test -d bin || mkdir bin
-  curl https://storage.googleapis.com/git-repo-downloads/repo > bin/repo
-  chmod a+x bin/repo
+  test -d "${bin}" || mkdir -p "${bin}"
+  curl https://storage.googleapis.com/git-repo-downloads/repo > "${bin}"/repo
+  chmod a+x "${bin}"/repo
 fi
 
-if [ -x bin/python ]; then
+if [ -x "${bin}"/python ]; then
   echo Python already selected
 else
   PYTHON=`type -P python2.7 python2 python | head -1`
   if [ -n "${PYTHON}" ]; then
     echo "Using ${PYTHON} for PYTHON"
-    ln -s "${PYTHON}" bin/python
+    ln -s "${PYTHON}" "${bin}"/python
   else
     echo >&2 Unable to find a python
     exit 1
   fi
 fi
 
-PATH=`pwd`/bin:"${PATH}"
+PATH="${bin}:${PATH}"
 export PATH
 
-p=`pwd`/patches
+p="$home"/patches
 
 test -d "${ANDROID_BUILD_TOP}" || mkdir -p "${ANDROID_BUILD_TOP}"
 test -d "${OUT_DIR}" || mkdir -p "${OUT_DIR}"
@@ -225,7 +233,7 @@ if [ -f stmp-clang-stage0 ]; then
   echo Clang stage0 already built
 else
   echo Building clang stage0
-  PYTHONPATH="${WORKDIR}"/src/ndk/build/lib python "${HOME}"/build_clang_stage0.py --installed-ndk-clang="${NDK_PATH}"/toolchains/llvm/prebuilt/linux-x86_64 --prebuilt-clang-path="${CLANGDIR}"
+  PYTHONPATH="${WORKDIR}"/src/ndk/build/lib python "${home}"/build_clang_stage0.py --installed-ndk-clang="${NDK_PATH}"/toolchains/llvm/prebuilt/linux-x86_64 --prebuilt-clang-path="${CLANGDIR}"
   touch stmp-clang-stage0
 fi
 

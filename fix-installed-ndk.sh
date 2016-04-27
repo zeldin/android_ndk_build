@@ -13,7 +13,13 @@ else
   NDK_PATH="$1"
 fi
 
-p=`pwd`/patches
+case "$0" in
+  /*) me="$0";;
+  *) me=`pwd`/"$0";;
+esac
+home=`dirname "$me"`
+
+p="$home"/patches
 
 cd "${NDK_PATH}"
 
