@@ -16,6 +16,13 @@ else
   NDK_VERSION="$2"
 fi
 
+if [ -f "${NDK_PATH}"/toolchains/llvm/prebuilt/linux-x86_64/repo.prop ]; then
+  :
+else
+  echo >&2 "Can not find an installed NDK in ${NDK_PATH}"
+  exit 1
+fi
+
 case "$0" in
   /*) me="$0";;
   *) me=`pwd`/"$0";;
