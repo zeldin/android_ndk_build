@@ -1,0 +1,47 @@
+diff --git a/Android.bp b/Android.bp
+index 6caaa40..9c46064 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -359,7 +359,7 @@ cc_library {
+         android: {
+             srcs: ["lib/builtins/enable_execute_stack.c"],
+             shared_libs: ["libdl", "liblog"],
+-            static_libs: ["liblzma"],
++            // static_libs: ["liblzma"],
+         },
+         android_arm: {
+             static_libs: ["libunwind_llvm"],
+@@ -367,28 +367,28 @@ cc_library {
+         },
+         android_arm64: {
+             // b/26968262 liblzma needs to be after libunwindbacktrace
+-            static_libs: ["libunwindbacktrace","liblzma"],
++            // static_libs: ["libunwindbacktrace","liblzma"],
+             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
+         },
+         android_mips: {
+             // b/26968262 liblzma needs to be after libunwindbacktrace
+-            static_libs: ["libunwindbacktrace","liblzma"],
++            // static_libs: ["libunwindbacktrace","liblzma"],
+             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
+         },
+         android_mips64: {
+             // b/26968262 liblzma needs to be after libunwindbacktrace
+-            static_libs: ["libunwindbacktrace","liblzma"],
++            // static_libs: ["libunwindbacktrace","liblzma"],
+             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
+         },
+         android_x86: {
+             // b/26968262 liblzma needs to be after libunwindbacktrace
+-            static_libs: ["libunwindbacktrace","liblzma"],
++            // static_libs: ["libunwindbacktrace","liblzma"],
+             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
+         },
+         android_x86_64: {
+             srcs: ["lib/builtins/ppc/floatditf.c"],
+             // b/26968262 liblzma needs to be after libunwindbacktrace
+-            static_libs: ["libunwindbacktrace","liblzma"],
++            // static_libs: ["libunwindbacktrace","liblzma"],
+             ldflags: ["-Wl,--exclude-libs,libunwindbacktrace.a"],
+         },
+         linux: {

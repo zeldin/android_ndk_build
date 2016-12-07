@@ -1,15 +1,16 @@
 diff --git a/Android.mk b/Android.mk
-index bff3554..0744858 100644
+index c8c87d7..d70ee86 100644
 --- a/Android.mk
 +++ b/Android.mk
-@@ -24,22 +24,28 @@ clang-toolchain: \
-     libprofile_rt \
+@@ -69,23 +69,29 @@ llvm-tools: \
+     yaml-bench
  
  ifneq ($(HOST_OS),darwin)
 +
 +ifneq (,$(filter x86,$(HOST_ARCH)))
  clang-toolchain: \
      host_cross_clang \
+     host_cross_clang_64 \
 -    libasan \
      libasan_32 \
 -    libasan_cxx \
@@ -20,7 +21,7 @@ index bff3554..0744858 100644
 -    libubsan_standalone \
      libubsan_standalone_32 \
 -    libubsan_standalone_cxx \
-     libubsan_standalone_cxx_32 \
+     libubsan_standalone_cxx_32
  
  endif
  
@@ -32,9 +33,9 @@ index bff3554..0744858 100644
 +
 +endif
 +
- ifneq (,$(filter arm arm64 x86,$(TARGET_ARCH)))
+ ifneq (,$(filter arm arm64 x86 mips mips64,$(TARGET_ARCH)))
  clang-toolchain: \
-     $(ADDRESS_SANITIZER_RUNTIME_LIBRARY) \
+     $(ADDRESS_SANITIZER_RUNTIME_LIBRARY)
 diff --git a/build.py b/build.py
 index 4e56924..52c74e4 100644
 --- a/build.py
@@ -70,6 +71,23 @@ index 4e56924..52c74e4 100644
      elif sys.platform == 'darwin':
          hosts = ['darwin-x86']
      else:
+diff --git a/tools/clang-check/Android.mk b/tools/clang-check/Android.mk
+index f286179..d1ae39d 100644
+--- a/tools/clang-check/Android.mk
++++ b/tools/clang-check/Android.mk
+@@ -72,6 +72,12 @@ clang_check_STATIC_LIBRARIES := \
+   libLLVMAArch64Desc \
+   libLLVMAArch64AsmPrinter \
+   libLLVMAArch64Utils \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCCodeGen \
++  libLLVMPPCDisassembler \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
+   libLLVMIRReader \
+   libLLVMAsmParser \
+   libLLVMAsmPrinter \
 diff --git a/tools/driver/Android.mk b/tools/driver/Android.mk
 index bb9f3c7..0390544 100644
 --- a/tools/driver/Android.mk

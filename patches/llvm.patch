@@ -1,5 +1,5 @@
 diff --git a/Android.mk b/Android.mk
-index dc97ee8..ecbf872 100644
+index 84c6cfa..fb5515c 100644
 --- a/Android.mk
 +++ b/Android.mk
 @@ -96,6 +96,15 @@ subdirs += \
@@ -84,10 +84,10 @@ index c9e82da..f3e2875 100644
  #error "Unknown native architecture"
 diff --git a/lib/Target/PowerPC/Android.mk b/lib/Target/PowerPC/Android.mk
 new file mode 100644
-index 0000000..d773cd4
+index 0000000..a097fb2
 --- /dev/null
 +++ b/lib/Target/PowerPC/Android.mk
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,76 @@
 +LOCAL_PATH := $(call my-dir)
 +
 +powerpc_codegen_TBLGEN_TABLES := \
@@ -104,6 +104,7 @@ index 0000000..d773cd4
 +
 +powerpc_codegen_SRC_FILES := \
 +  PPCAsmPrinter.cpp \
++  PPCBoolRetToInt.cpp \
 +  PPCBranchSelector.cpp \
 +  PPCCTRLoops.cpp \
 +  PPCHazardRecognizers.cpp \
@@ -116,6 +117,7 @@ index 0000000..d773cd4
 +  PPCLoopDataPrefetch.cpp \
 +  PPCLoopPreIncPrep.cpp \
 +  PPCMCInstLower.cpp \
++  PPCMIPeephole.cpp \
 +  PPCMachineFunctionInfo.cpp \
 +  PPCRegisterInfo.cpp \
 +  PPCSubtarget.cpp \
@@ -472,10 +474,10 @@ index 0000000..1a8b33b
 +include $(BUILD_STATIC_LIBRARY)
 +endif
 diff --git a/shared_llvm.mk b/shared_llvm.mk
-index 7a8cf6f..bfb1e20 100644
+index 4a4ba5a..f690bfa 100644
 --- a/shared_llvm.mk
 +++ b/shared_llvm.mk
-@@ -43,6 +43,14 @@ llvm_aarch64_static_libraries := \
+@@ -44,6 +44,14 @@ llvm_aarch64_static_libraries := \
    libLLVMAArch64Utils \
    libLLVMAArch64Disassembler
  
@@ -498,3 +500,229 @@ index 7a8cf6f..bfb1e20 100644
    $(llvm_host_static_libraries) \
    $(llvm_post_static_libraries)
  
+diff --git a/tools/dsymutil/Android.mk b/tools/dsymutil/Android.mk
+index bd887dd..4ff3875 100644
+--- a/tools/dsymutil/Android.mk
++++ b/tools/dsymutil/Android.mk
+@@ -31,6 +31,12 @@ llvm_dsymutil_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86CodeGen \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+diff --git a/tools/llc/Android.mk b/tools/llc/Android.mk
+index 7842368..eeb56e1 100644
+--- a/tools/llc/Android.mk
++++ b/tools/llc/Android.mk
+@@ -69,6 +69,14 @@ llvm_llc_aarch64_STATIC_LIBRARIES := \
+   libLLVMAArch64AsmPrinter \
+   libLLVMAArch64Utils
+ 
++llvm_llc_ppc_STATIC_LIBRARIES := \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCCodeGen \
++  libLLVMPPCDisassembler \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter
++
+ 
+ 
+ #===---------------------------------------------------------------===
+@@ -89,6 +97,7 @@ LOCAL_STATIC_LIBRARIES := \
+   $(llvm_llc_mips_STATIC_LIBRARIES) \
+   $(llvm_llc_x86_STATIC_LIBRARIES) \
+   $(llvm_llc_aarch64_STATIC_LIBRARIES) \
++  $(llvm_llc_ppc_STATIC_LIBRARIES) \
+   $(llvm_llc_STATIC_LIBRARIES)
+ 
+ LOCAL_LDLIBS += -lpthread -lm -ldl
+diff --git a/tools/lli/Android.mk b/tools/lli/Android.mk
+index 99552de..b8c51b3 100644
+--- a/tools/lli/Android.mk
++++ b/tools/lli/Android.mk
+@@ -43,12 +43,12 @@ lli_STATIC_LIBRARIES := \
+   libLLVMX86AsmParser \
+   libLLVMX86Utils \
+   libLLVMX86Disassembler \
++  libLLVMInterpreter \
+   libLLVMAsmPrinter \
+   libLLVMSelectionDAG \
+   libLLVMCodeGen \
+   libLLVMInstrumentation \
+   libLLVMLinker \
+-  libLLVMInterpreter \
+   libLLVMScalarOpts \
+   libLLVMTransformUtils \
+   libLLVMAnalysis \
+diff --git a/tools/llvm-c-test/Android.mk b/tools/llvm-c-test/Android.mk
+index 16b9d94..6fff928 100644
+--- a/tools/llvm-c-test/Android.mk
++++ b/tools/llvm-c-test/Android.mk
+@@ -36,6 +36,11 @@ llvm_c_test_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86CodeGen \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+diff --git a/tools/llvm-cxxdump/Android.mk b/tools/llvm-cxxdump/Android.mk
+index b45912c..e84db2e 100644
+--- a/tools/llvm-cxxdump/Android.mk
++++ b/tools/llvm-cxxdump/Android.mk
+@@ -24,6 +24,11 @@ llvm_cxxdump_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+   libLLVMX86AsmParser \
+diff --git a/tools/llvm-dwp/Android.mk b/tools/llvm-dwp/Android.mk
+index 2b68f67..aea714f 100644
+--- a/tools/llvm-dwp/Android.mk
++++ b/tools/llvm-dwp/Android.mk
+@@ -40,6 +40,12 @@ llvm_dwp_STATIC_LIBRARIES := \
+   libLLVMAArch64AsmPrinter \
+   libLLVMAArch64Utils \
+   libLLVMAArch64Disassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmParser \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMExecutionEngine \
+   libLLVMRuntimeDyld \
+   libLLVMMCJIT \
+diff --git a/tools/llvm-lto/Android.mk b/tools/llvm-lto/Android.mk
+index e15c3fc..84eb9f2 100644
+--- a/tools/llvm-lto/Android.mk
++++ b/tools/llvm-lto/Android.mk
+@@ -30,6 +30,12 @@ llvm_lto_STATIC_LIBRARIES := \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsAsmParser \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDesc \
++  libLLVMPPCDisassembler \
+   libLLVMX86CodeGen \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+diff --git a/tools/llvm-mc/Android.mk b/tools/llvm-mc/Android.mk
+index e7e29ee..71026a6 100644
+--- a/tools/llvm-mc/Android.mk
++++ b/tools/llvm-mc/Android.mk
+@@ -28,6 +28,11 @@ llvm_mc_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+   libLLVMX86AsmParser \
+diff --git a/tools/llvm-nm/Android.mk b/tools/llvm-nm/Android.mk
+index 236378c..99fbf3c 100644
+--- a/tools/llvm-nm/Android.mk
++++ b/tools/llvm-nm/Android.mk
+@@ -30,6 +30,12 @@ llvm_nm_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+   libLLVMX86AsmPrinter \
+diff --git a/tools/llvm-objdump/Android.mk b/tools/llvm-objdump/Android.mk
+index 847f932..692bd62 100644
+--- a/tools/llvm-objdump/Android.mk
++++ b/tools/llvm-objdump/Android.mk
+@@ -32,6 +32,11 @@ llvm_objdump_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+   libLLVMX86AsmParser \
+diff --git a/tools/llvm-rtdyld/Android.mk b/tools/llvm-rtdyld/Android.mk
+index 853c71a..7c50e7f 100644
+--- a/tools/llvm-rtdyld/Android.mk
++++ b/tools/llvm-rtdyld/Android.mk
+@@ -30,6 +30,12 @@ llvm_rtdyld_STATIC_LIBRARIES := \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsAsmParser \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCAsmParser \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86CodeGen \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+diff --git a/tools/opt/Android.mk b/tools/opt/Android.mk
+index 0d006f1..3d0446f 100644
+--- a/tools/opt/Android.mk
++++ b/tools/opt/Android.mk
+@@ -36,6 +36,11 @@ llvm_opt_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86CodeGen \
+   libLLVMX86Info \
+   libLLVMX86Desc \
+diff --git a/tools/sancov/Android.mk b/tools/sancov/Android.mk
+index 3e37a2c..b1838dd 100644
+--- a/tools/sancov/Android.mk
++++ b/tools/sancov/Android.mk
+@@ -28,6 +28,11 @@ llvm_sancov_STATIC_LIBRARIES := \
+   libLLVMMipsDesc \
+   libLLVMMipsAsmPrinter \
+   libLLVMMipsDisassembler \
++  libLLVMPPCCodeGen \
++  libLLVMPPCInfo \
++  libLLVMPPCDesc \
++  libLLVMPPCAsmPrinter \
++  libLLVMPPCDisassembler \
+   libLLVMX86CodeGen \
+   libLLVMX86Info \
+   libLLVMX86Desc \

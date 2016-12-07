@@ -1,33 +1,33 @@
 diff --git a/core/clang/config.mk b/core/clang/config.mk
-index 756bf49..d5921f8 100644
+index 4ae0bc5..c64f075 100644
 --- a/core/clang/config.mk
 +++ b/core/clang/config.mk
-@@ -2,7 +2,7 @@
+@@ -1,6 +1,6 @@
+ ## Clang configurations.
  
- LLVM_PREBUILTS_VERSION ?= 3.8
- LLVM_PREBUILTS_BASE ?= prebuilts/clang/host
 -LLVM_PREBUILTS_PATH := $(LLVM_PREBUILTS_BASE)/$(BUILD_OS)-x86/$(LLVM_PREBUILTS_VERSION)/bin
 +LLVM_PREBUILTS_PATH := $(LLVM_PREBUILTS_BASE)/$(BUILD_OS)-$(BUILD_ARCH)/$(LLVM_PREBUILTS_VERSION)/bin
- LLVM_RTLIB_PATH := $(LLVM_PREBUILTS_PATH)/../lib/clang/$(LLVM_PREBUILTS_VERSION)/lib/linux/
+ LLVM_RTLIB_PATH := $(LLVM_PREBUILTS_PATH)/../lib64/clang/$(LLVM_RELEASE_VERSION)/lib/linux/
  
  CLANG := $(LLVM_PREBUILTS_PATH)/clang$(BUILD_EXECUTABLE_SUFFIX)
 diff --git a/core/envsetup.mk b/core/envsetup.mk
-index 050d445..e1ad2fc 100644
+index c3cd3c5..2d22225 100644
 --- a/core/envsetup.mk
 +++ b/core/envsetup.mk
-@@ -60,9 +60,11 @@ BUILD_OS := $(HOST_OS)
+@@ -62,10 +62,12 @@ BUILD_OS := $(HOST_OS)
  HOST_CROSS_OS :=
  # We can cross-build Windows binaries on Linux
  ifeq ($(HOST_OS),linux)
 +ifneq (,$(findstring x86,$(UNAME)))
  HOST_CROSS_OS := windows
  HOST_CROSS_ARCH := x86
+ HOST_CROSS_2ND_ARCH := x86_64
  endif
 +endif
  
  ifeq ($(HOST_OS),)
  $(error Unable to determine HOST_OS from uname -sm: $(UNAME)!)
-@@ -76,6 +78,16 @@ ifneq (,$(findstring x86_64,$(UNAME)))
+@@ -79,6 +81,16 @@ ifneq (,$(findstring x86_64,$(UNAME)))
  else
  ifneq (,$(findstring x86,$(UNAME)))
  $(error Building on a 32-bit x86 host is not supported: $(UNAME)!)
@@ -44,7 +44,7 @@ index 050d445..e1ad2fc 100644
  endif
  endif
  
-@@ -98,7 +110,11 @@ endif
+@@ -101,7 +113,11 @@ endif
  endif
  
  # We don't want to move all the prebuilt host tools to a $(HOST_OS)-x86_64 dir.
@@ -367,24 +367,3 @@ index 0000000..2ca2e3e
 +define get-file-size
 +stat --format "%s" "$(1)" | tr -d '\n'
 +endef
-diff --git a/core/main.mk b/core/main.mk
-index d9ff68e..927601d 100644
---- a/core/main.mk
-+++ b/core/main.mk
-@@ -177,6 +177,8 @@ $(warning ************************************************************)
- $(error Directory names containing spaces not supported)
- endif
- 
-+ifeq ($(strip $(SKIP_JAVA_CHECK)),)
-+
- java_version_str := $(shell unset _JAVA_OPTIONS && java -version 2>&1)
- javac_version_str := $(shell unset _JAVA_OPTIONS && javac -version 2>&1)
- 
-@@ -256,6 +258,7 @@ $(info ************************************************************)
- $(error stop)
- endif
- 
-+endif
- 
- ifndef BUILD_EMULATOR
-   # Emulator binaries are now provided under prebuilts/android-emulator/

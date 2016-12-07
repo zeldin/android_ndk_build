@@ -108,6 +108,8 @@ for arch in arch-arm64 arch-mips64 arch-x86_64; do
   ln -s ../android-21/"${arch}" prebuilts/ndk/current/platforms/android-19/"${arch}"
 done
 
+test -h prebuilts/ndk/r10 || test -d prebuilts/ndk/r10 || ln -s current prebuilts/ndk/r10
+
 if [ -f stmp-host-tools ]; then
   echo Host tools already built
 else
@@ -194,8 +196,14 @@ else
   echo Patching sources
   cd build
   patch -p1 < "${p}"/build2.patch
-  cd ../external/clang
+  cd soong
+  patch -p1 < "${p}"/soong.patch
+  cd ../../external/clang
   patch -p1 < "${p}"/clang.patch
+  cd ../compiler-rt
+  patch -p1 < "${p}"/compiler-rt.patch
+  cd ../libunwind
+  patch -p1 < "${p}"/libunwind.patch
   cd ../llvm
   patch -p1 < "${p}"/llvm.patch
   cd ../..
@@ -232,9 +240,47 @@ for fn in "${OUT_DIR}"/dist/gcc-*; do
   fi
 done
 
+if [ -d kati ]; then
+  echo Kati already cloned
+else
+  echo Cloning kati
+  git clone https://github.com/google/kati
+fi
+
+if [ -f kati/ckati ]; then
+  echo ckati already built
+else
+  echo Building ckati
+  cd kati
+  make KATI_CXXFLAGS='-g -W -Wall -MMD -MP -O -DNOLOG' ckati
+  cd ..
+fi
+
+test -d prebuilts/sdk/tools/linux/bin || mkdir -p prebuilts/sdk/tools/linux/bin
+
+if [ -f prebuilts/sdk/tools/linux/bin/ckati ]; then
+  echo ckati already installed
+else
+  echo Installing ckati
+  cp kati/ckati prebuilts/sdk/tools/linux/bin/ckati
+fi
+
+if [ -f prebuilts/sdk/tools/linux/bin/makeparallel ]; then
+  echo makeparallel already installed
+else
+  echo Building makeparallel
+  cd build/tools/makeparallel
+  make makeparallel
+  echo Installing makeparallel
+  cp makeparallel ../../../prebuilts/sdk/tools/linux/bin/makeparallel
+  cd ../../..
+fi
+
+NINJA=ninja
 USE_NINJA=false
 SKIP_JAVA_CHECK=true
-export USE_NINJA SKIP_JAVA_CHECK
+JAVA_NOT_REQUIRED=true
+export NINJA USE_NINJA SKIP_JAVA_CHECK JAVA_NOT_REQUIRED
 
 if [ -f stmp-clang-stage0 ]; then
   echo Clang stage0 already built

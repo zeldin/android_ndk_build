@@ -1,0 +1,13 @@
+diff --git a/Android.bp b/Android.bp
+index 83045a0..fa2db21 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -383,7 +383,7 @@ cc_library {
+ 
+     export_include_dirs: ["include"],
+ 
+-    shared_libs: ["liblzma"],
++//    shared_libs: ["liblzma"],
+ 
+     /*debug: {
+     shared_libs: ["liblog"],

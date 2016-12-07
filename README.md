@@ -29,6 +29,8 @@ you will need a number of tools installed:
  * git
  * curl
  * native host toolchains, both gcc (g++) and clang (clang++)
+ * ninja
+ * go
 
 Also required is about 40G of disk space.  At least 4G of RAM is recommended.
 
@@ -42,7 +44,7 @@ to where you unpacked the NDK release (the script needs to access some
 files from here while bootstrapping the LLVM build), and the corresponding
 git tag for the release.  Example:
 
-  `./build-host-binaries.sh /usr/local/android-ndk-r11c r11c`
+  `./build-host-binaries.sh /usr/local/android-ndk-r12b r12b`
 
 By default the sources and build products will be placed in the current
 directory, but by setting the environment variable WORKDIR, you can
@@ -64,7 +66,7 @@ NDK can be used on Linux/PPC and Linux/AArch64 (provided you have
 built the corresponding binaries).  The script takes one argument,
 which is the path of the NDK installation to modify.  Example:
 
-  `./fix-installed-ndk.sh /usr/local/android-ndk-r11c`
+  `./fix-installed-ndk.sh /usr/local/android-ndk-r12b`
 
 If you have built host binaries for multiple architectures, the
 script will install all of them (assuming the same WORKDIR was used).

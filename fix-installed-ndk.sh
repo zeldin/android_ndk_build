@@ -94,6 +94,8 @@ for fn in "${OUT_DIR}"/dist/* "${OUT_DIR}"/stage2/*.tar.bz2; do
       fi
       cd ..
       ;;
+    logs)
+      ;;
     *)
       echo >&2 "Don't know how to install ${pkg}"
       exit 1
