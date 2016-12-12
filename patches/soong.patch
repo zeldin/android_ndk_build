@@ -1,12 +1,13 @@
 diff --git a/Android.bp b/Android.bp
-index 831b703..f9a01d5 100644
+index 831b703..a165ed5 100644
 --- a/Android.bp
 +++ b/Android.bp
-@@ -139,6 +139,7 @@ bootstrap_go_package {
+@@ -139,6 +139,8 @@ bootstrap_go_package {
          "cc/x86_darwin_host.go",
          "cc/x86_linux_host.go",
          "cc/x86_windows_host.go",
 +        "cc/arm_linux_host.go",
++        "cc/ppc_linux_host.go",
      ],
      testSrcs: [
          "cc/cc_test.go",
@@ -144,19 +145,184 @@ index 0000000..bb0c569
 +
 +	registerHostToolchainFactory(common.Linux, common.Arm64, linuxAarch64ToolchainFactory)
 +}
+diff --git a/cc/ppc_linux_host.go b/cc/ppc_linux_host.go
+new file mode 100644
+index 0000000..a35e220
+--- /dev/null
++++ b/cc/ppc_linux_host.go
+@@ -0,0 +1,111 @@
++// Copyright 2016 Google Inc. All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package cc
++
++import (
++	"strings"
++
++	"android/soong/common"
++)
++
++var (
++	// Extended cflags
++	linuxPpcCflags = []string{
++		"-m32",
++	}
++
++	linuxPpcLdflags = []string{
++		"-m32",
++	}
++
++	linuxPpcClangLdflags = append(clangFilterUnknownCflags(linuxPpcLdflags), []string{
++		"-B${LinuxPpcGccRoot}/lib/gcc/${LinuxPpcGccTriple}/${linuxGccVersion}",
++		"-L${LinuxPpcGccRoot}/lib/gcc/${LinuxPpcGccTriple}/${linuxGccVersion}",
++		"-L${LinuxPpcGccRoot}/${LinuxPpcGccTriple}/lib32",
++	}...)
++
++	linuxPpcClangCppflags = []string{
++		"-isystem ${LinuxPpcGccRoot}/${LinuxPpcGccTriple}/include/c++/${linuxGccVersion}/${LinuxPpcGccTriple}",
++	}
++
++)
++
++func init() {
++
++	// Extended cflags
++	pctx.StaticVariable("LinuxPpcCflags", strings.Join(linuxPpcCflags, " "))
++	pctx.StaticVariable("LinuxPpcLdflags", strings.Join(linuxPpcLdflags, " "))
++
++	pctx.StaticVariable("LinuxPpcClangCflags",
++		strings.Join(clangFilterUnknownCflags(linuxPpcCflags), " "))
++	pctx.StaticVariable("LinuxPpcClangLdflags", strings.Join(linuxPpcClangLdflags, " "))
++	pctx.StaticVariable("LinuxPpcClangCppflags", strings.Join(linuxPpcClangCppflags, " "))
++}
++
++type toolchainLinuxPpc struct {
++	toolchain32Bit
++	toolchainLinux
++}
++
++func (t *toolchainLinuxPpc) Name() string {
++	return "ppc"
++}
++
++func (t *toolchainLinuxPpc) Cflags() string {
++	return "${linuxCflags} ${LinuxPpcCflags}"
++}
++
++func (t *toolchainLinuxPpc) Ldflags() string {
++	return "${linuxLdflags} ${LinuxPpcLdflags}"
++}
++
++func (t *toolchainLinuxPpc) GccRoot() string {
++	return "${LinuxPpcGccRoot}"
++}
++
++func (t *toolchainLinuxPpc) GccTriple() string {
++	return "${LinuxPpcGccTriple}"
++}
++
++func (t *toolchainLinuxPpc) ClangTriple() string {
++	return "powerpc-linux-gnu"
++}
++
++func (t *toolchainLinuxPpc) ClangCflags() string {
++	return "${linuxClangCflags} ${LinuxPpcClangCflags}"
++}
++
++func (t *toolchainLinuxPpc) ClangCppflags() string {
++	return "${linuxClangCppflags} ${LinuxPpcClangCppflags}"
++}
++
++func (t *toolchainLinuxPpc) ClangLdflags() string {
++	return "${linuxClangLdflags} ${LinuxPpcClangLdflags}"
++}
++
++var toolchainLinuxPpcSingleton Toolchain = &toolchainLinuxPpc{}
++
++func linuxPpcToolchainFactory(arch common.Arch) Toolchain {
++	return toolchainLinuxPpcSingleton
++}
++
++func init() {
++	pctx.SourcePathVariable("LinuxPpcGccRoot",
++		"prebuilts/gcc/${HostPrebuiltTag}/host/ppc-linux-glibc2.15-${linuxGccVersion}")
++
++	pctx.StaticVariable("LinuxPpcGccTriple", "powerpc-unknown-linux-gnu")
++
++	registerHostToolchainFactory(common.Linux, common.Ppc, linuxPpcToolchainFactory)
++}
 diff --git a/common/arch.go b/common/arch.go
-index 8a86c79..f0741f5 100644
+index 8a86c79..ba43387 100644
 --- a/common/arch.go
 +++ b/common/arch.go
-@@ -254,6 +254,8 @@ type archProperties struct {
+@@ -40,6 +40,7 @@ var (
+ 	Mips64 = newArch("mips64", "lib64")
+ 	X86    = newArch("x86", "lib32")
+ 	X86_64 = newArch("x86_64", "lib64")
++	Ppc    = newArch("ppc", "lib32")
+ 
+ 	Common = ArchType{
+ 		Name: "common",
+@@ -53,6 +54,7 @@ var archTypeMap = map[string]ArchType{
+ 	"mips64": Mips64,
+ 	"x86":    X86,
+ 	"x86_64": X86_64,
++	"ppc":    Ppc,
+ }
+ 
+ /*
+@@ -79,6 +81,9 @@ module {
+         x86_64: {
+             // Host or device variants with x86_64 architecture
+         },
++	ppc: {
++            // Host or device variants with ppc architecture
++	},
+     },
+     multilib: {
+         lib32: {
+@@ -217,6 +222,11 @@ type archProperties struct {
+ 			Avx    interface{} `blueprint:"filter(android:\"arch_variant\")"`
+ 			Popcnt interface{} `blueprint:"filter(android:\"arch_variant\")"`
+ 		}
++
++		// Properties for module variants being built to run on ppc (host or device)
++		Ppc struct {
++			Embed `blueprint:"filter(android:\"arch_variant\")"`
++		}
+ 	}
+ 
+ 	// Properties to vary by 32-bit or 64-bit
+@@ -254,6 +264,10 @@ type archProperties struct {
  		Linux_x86 interface{} `blueprint:"filter(android:\"arch_variant\")"`
  		// Properties for module variants being built to run on linux x86_64 hosts
  		Linux_x86_64 interface{} `blueprint:"filter(android:\"arch_variant\")"`
 +		// Properties for module variants being built to run on linux arm64 hosts
 +		Linux_arm64 interface{} `blueprint:"filter(android:\"arch_variant\")"`
++		// Properties for module variants being built to run on linux ppc hosts
++		Linux_ppc interface{} `blueprint:"filter(android:\"arch_variant\")"`
  		// Properties for module variants being built to run on darwin hosts
  		Darwin interface{} `blueprint:"filter(android:\"arch_variant\")"`
  		// Properties for module variants being built to run on darwin x86 hosts
+@@ -950,6 +964,7 @@ func decodeMegaDevice() ([]Arch, error) {
+ 		{"x86_64", "ivybridge", "", []string{"x86_64"}},
+ 		{"x86_64", "sandybridge", "", []string{"x86_64"}},
+ 		{"x86_64", "silvermont", "", []string{"x86_64"}},
++		{"ppc", "", "", []string{"ppc"}},
+ 	}
+ 
+ 	var ret []Arch
 diff --git a/soong.bash b/soong.bash
 index f695e62..9c8f95c 100755
 --- a/soong.bash
