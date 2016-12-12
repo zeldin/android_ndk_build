@@ -29,7 +29,7 @@ you will need a number of tools installed:
  * git
  * curl
  * native host toolchains, both gcc (g++) and clang (clang++)
- * ninja
+ * ninja 1.7
  * go
 
 Also required is about 40G of disk space.  At least 4G of RAM is recommended.
